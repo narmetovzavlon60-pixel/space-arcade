@@ -10,7 +10,6 @@ const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const engine = new GameEngine(canvas);
 window.gameEngine = engine;
 
-// Динамически наполняем сетку из 20 уровней
 const levelGrid = document.getElementById('levelGrid');
 if (levelGrid) {
   levelGrid.innerHTML = '';
@@ -27,12 +26,10 @@ const btnLeft = document.getElementById('btnLeft') as HTMLButtonElement;
 const btnRight = document.getElementById('btnRight') as HTMLButtonElement;
 const btnFire = document.getElementById('btnFire') as HTMLButtonElement;
 
-// Кнопки магазина
 const shopGunBtn = document.getElementById('shopGunBtn') as HTMLButtonElement;
 const shopShieldBtn = document.getElementById('shopShieldBtn') as HTMLButtonElement;
 const shopSpeedBtn = document.getElementById('shopSpeedBtn') as HTMLButtonElement;
 const shopHpBtn = document.getElementById('shopHpBtn') as HTMLButtonElement;
-const shopMagnetBtn = document.getElementById('shopMagnetBtn') as HTMLButtonElement;
 
 shopGunBtn.addEventListener('click', () => {
   engine.buyUpgrade('multishotLevel', engine.upgrades.multishotLevel * 30);
@@ -50,11 +47,6 @@ shopHpBtn.addEventListener('click', () => {
   engine.buyUpgrade('maxHp', engine.upgrades.maxHp * 40);
 });
 
-shopMagnetBtn.addEventListener('click', () => {
-  engine.buyUpgrade('magnetRadius', 50);
-});
-
-// Клавиатура
 window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') engine.player.velocity.x = -1;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') engine.player.velocity.x = 1;
@@ -72,7 +64,6 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-// Тач-управление
 function bindTouch(
   btn: HTMLButtonElement,
   onPress: () => void,
