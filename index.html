@@ -42,14 +42,14 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(8, 11, 16, 0.95);
+      background: rgba(8, 11, 16, 0.96);
       border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      gap: 8px;
-      padding: 14px;
+      gap: 6px;
+      padding: 12px;
       overflow-y: auto;
     }
     .hidden {
@@ -57,12 +57,12 @@
     }
     h2 {
       color: #00ffcc;
-      font-size: 20px;
+      font-size: 18px;
       margin-bottom: 2px;
     }
     .coins-text {
       color: #ffff00;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
       margin-bottom: 2px;
     }
@@ -70,12 +70,12 @@
       display: flex;
       gap: 4px;
       width: 100%;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     .mode-btn {
       flex: 1;
-      padding: 6px 2px;
-      font-size: 10px;
+      padding: 5px 2px;
+      font-size: 9px;
       background: #121924;
       border: 1px solid #00ffcc;
       color: #00ffcc;
@@ -90,13 +90,13 @@
     .level-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      gap: 5px;
       width: 100%;
-      max-height: 160px;
+      max-height: 130px;
       overflow-y: auto;
     }
     .lvl-btn {
-      padding: 8px 0;
+      padding: 6px 0;
       background: #1a2634;
       color: #00ffcc;
       border: 1px solid #00ffcc;
@@ -111,12 +111,12 @@
     }
     .btn {
       width: 100%;
-      padding: 9px;
+      padding: 8px;
       background: #1a2634;
       color: #fff;
       border: 1px solid #00ffcc;
       border-radius: 8px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
       cursor: pointer;
     }
@@ -132,14 +132,26 @@
       border-color: #aa00ff;
       color: #aa00ff;
     }
+    .btn-pink {
+      border-color: #ff0077;
+      color: #ff0077;
+    }
+
+    .section-title {
+      font-size: 11px;
+      color: #ff9900;
+      margin-top: 4px;
+      align-self: flex-start;
+      font-weight: bold;
+    }
 
     .quest-item {
       width: 100%;
       background: #121924;
       border: 1px solid #334455;
-      padding: 8px;
+      padding: 6px 8px;
       border-radius: 6px;
-      font-size: 11px;
+      font-size: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -149,7 +161,6 @@
       background: #002b22;
     }
 
-    /* Уведомление о прохождении уровня */
     .level-clear-overlay {
       position: absolute;
       top: 30%;
@@ -162,9 +173,9 @@
       text-align: center;
       font-weight: bold;
       box-shadow: 0 0 20px #00ffcc;
+      z-index: 10;
     }
 
-    /* Панель управления */
     .controls {
       width: 320px;
       margin-top: 10px;
@@ -206,16 +217,15 @@
   <div class="game-container">
     <canvas id="gameCanvas" width="320" height="480"></canvas>
 
-    <!-- Оверлей перехода на следующий уровень -->
     <div id="levelClearOverlay" class="level-clear-overlay hidden">
       <h3 style="font-size: 18px;">УРОВЕНЬ ПРОЙДЕН!</h3>
-      <p id="levelClearText" style="font-size: 12px; margin: 8px 0;">Следующий уровень через 2 сек...</p>
+      <p id="levelClearText" style="font-size: 11px; margin: 6px 0;">Переход на следующий уровень...</p>
       <button class="btn" style="background:#000; color:#00ffcc; border:none;" onclick="window.gameEngine.nextLevel()">ДАЛЕЕ ▶</button>
     </div>
 
     <!-- Главное меню -->
     <div id="menuScreen" class="screen">
-      <h2>SPACE ARCADE</h2>
+      <h2>SPACE ARCADE PRO</h2>
       <div id="menuCoins" class="coins-text">Монеты: $0</div>
 
       <div class="mode-select">
@@ -224,45 +234,67 @@
         <button id="modeBossRun" class="mode-btn" onclick="window.gameEngine.setMode('BOSSRUN')">Босс-Ран</button>
       </div>
 
-      <div style="display: flex; gap: 6px; width: 100%; margin-bottom: 4px;">
-        <button class="btn btn-orange" onclick="window.gameEngine.openShop()">🛒 Магазин</button>
-        <button class="btn btn-purple" onclick="window.gameEngine.openQuests()">📜 Квесты</button>
+      <div style="display: flex; gap: 4px; width: 100%;">
+        <button class="btn btn-orange" style="font-size:10px; padding:6px;" onclick="window.gameEngine.openShop()">🛒 Магазин</button>
+        <button class="btn btn-purple" style="font-size:10px; padding:6px;" onclick="window.gameEngine.openQuests()">📜 Квесты</button>
+        <button class="btn btn-pink" style="font-size:10px; padding:6px;" onclick="window.gameEngine.openCustomization()">🎨 Скины</button>
       </div>
 
-      <p id="lvlSelectTitle" style="font-size: 11px; color: #aaa;">Выберите стартовый уровень:</p>
+      <p id="lvlSelectTitle" style="font-size: 11px; color: #aaa; margin-top: 2px;">Выберите уровень:</p>
       <div class="level-grid" id="levelGrid"></div>
+      <button class="btn" style="background: #00ffcc; color: #000; margin-top: auto;" onclick="window.gameEngine.startSelectedMode()">▶ ИГРАТЬ</button>
     </div>
 
-    <!-- Магазин -->
+    <!-- Магазин улучшений и тем -->
     <div id="shopScreen" class="screen hidden">
       <h2 style="color: #ff9900;">МАГАЗИН</h2>
       <div id="shopCoins" class="coins-text">Баланс: $0</div>
-      <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-        <button id="shopGunBtn" class="btn">🔫 Пушка - $30</button>
-        <button id="shopShieldBtn" class="btn">🛡️ Щит - $20</button>
-        <button id="shopSpeedBtn" class="btn">⚡ Двигатель - $25</button>
-        <button id="shopHpBtn" class="btn">❤️ Доп. Жизнь - $40</button>
+      
+      <div class="section-title">Улучшения корабля:</div>
+      <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+        <button id="shopGunBtn" class="btn">🔫 Оружие</button>
+        <button id="shopShieldBtn" class="btn">🛡️ Энерго-щит - $25</button>
+        <button id="shopSpeedBtn" class="btn">⚡ Двигатель</button>
+        <button id="shopHpBtn" class="btn">❤️ Корпус</button>
+        <button id="shopLaserBtn" class="btn">⚡ Лазерный луч - $100</button>
+      </div>
+
+      <div class="section-title">Темы оформления фона:</div>
+      <div style="display:flex; gap:4px; width:100%;">
+        <button class="btn" style="font-size:10px; padding:6px;" onclick="window.gameEngine.setTheme('space')">🌌 Космос</button>
+        <button class="btn" style="font-size:10px; padding:6px;" onclick="window.gameEngine.setTheme('cyber')">🌆 Неон</button>
+        <button class="btn" style="font-size:10px; padding:6px;" onclick="window.gameEngine.setTheme('matrix')">💻 Матрица</button>
+      </div>
+
+      <button class="btn" style="margin-top: auto;" onclick="window.gameEngine.openMenu()">◀ В МЕНЮ</button>
+    </div>
+
+    <!-- Меню кастомизации / Скинов -->
+    <div id="customScreen" class="screen hidden">
+      <h2 style="color: #ff0077;">АНГАР КОРАБЛЕЙ</h2>
+      <div style="font-size: 11px; color: #aaa; margin-bottom: 4px;">Получайте уникальные скины за сложные квесты!</div>
+      <div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:4px;" id="skinListContainer">
+        <!-- Скины рендерятся динамически -->
       </div>
       <button class="btn" style="margin-top: auto;" onclick="window.gameEngine.openMenu()">◀ В МЕНЮ</button>
     </div>
 
     <!-- Окно Квестов -->
     <div id="questsScreen" class="screen hidden">
-      <h2 style="color: #aa00ff;">КВЕСТЫ</h2>
-      <div id="questList" style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:8px;"></div>
+      <h2 style="color: #aa00ff;">КВЕСТЫ И НАГРАДЫ</h2>
+      <div id="questList" style="display:flex; flex-direction:column; gap:5px; width:100%; margin-top:4px; max-height:360px; overflow-y:auto;"></div>
       <button class="btn" style="margin-top: auto;" onclick="window.gameEngine.openMenu()">◀ В МЕНЮ</button>
     </div>
 
     <!-- Экран Game Over -->
     <div id="gameOverScreen" class="screen hidden" style="justify-content: center;">
       <h2 style="color: #ff0055;">ИГРА ОКОНЧЕНА</h2>
-      <div id="finalScore" style="font-size: 16px; margin-top: 8px;">Счет: 0</div>
-      <div id="finalCoins" style="font-size: 14px; color: #ffff00; margin-top: 4px;">Баланс монет: $0</div>
-      <button class="btn" style="margin-top: 20px; width: 160px;" onclick="window.gameEngine.openMenu()">В МЕНЮ</button>
+      <div id="finalScore" style="font-size: 15px; margin-top: 6px;">Счет: 0</div>
+      <div id="finalCoins" style="font-size: 13px; color: #ffff00; margin-top: 3px;">Заработано монет: $0</div>
+      <button class="btn" style="margin-top: 16px; width: 160px;" onclick="window.gameEngine.openMenu()">В МЕНЮ</button>
     </div>
   </div>
 
-  <!-- Панель управления -->
   <div class="controls">
     <div class="row">
       <button id="btnLeft" class="ctrl-btn">◀</button>

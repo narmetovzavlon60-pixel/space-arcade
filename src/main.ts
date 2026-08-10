@@ -30,21 +30,26 @@ const shopGunBtn = document.getElementById('shopGunBtn') as HTMLButtonElement;
 const shopShieldBtn = document.getElementById('shopShieldBtn') as HTMLButtonElement;
 const shopSpeedBtn = document.getElementById('shopSpeedBtn') as HTMLButtonElement;
 const shopHpBtn = document.getElementById('shopHpBtn') as HTMLButtonElement;
+const shopLaserBtn = document.getElementById('shopLaserBtn') as HTMLButtonElement;
 
 shopGunBtn.addEventListener('click', () => {
-  engine.buyUpgrade('multishotLevel', engine.upgrades.multishotLevel * 30);
+  engine.buyUpgrade('multishotLevel', engine.upgrades.multishotLevel * 40);
 });
 
 shopShieldBtn.addEventListener('click', () => {
-  engine.buyUpgrade('shieldLevel', 20);
+  engine.buyUpgrade('shieldLevel', 25);
 });
 
 shopSpeedBtn.addEventListener('click', () => {
-  engine.buyUpgrade('speedLevel', engine.upgrades.speedLevel * 25);
+  engine.buyUpgrade('speedLevel', engine.upgrades.speedLevel * 30);
 });
 
 shopHpBtn.addEventListener('click', () => {
-  engine.buyUpgrade('maxHp', engine.upgrades.maxHp * 40);
+  engine.buyUpgrade('maxHp', engine.upgrades.maxHp * 50);
+});
+
+shopLaserBtn.addEventListener('click', () => {
+  engine.buyLaser();
 });
 
 window.addEventListener('keydown', (e) => {
