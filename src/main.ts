@@ -9,7 +9,16 @@ const btnUpgradeShield = document.getElementById('btnUpgradeShield') as HTMLButt
 
 const engine = new GameEngine(canvas);
 
-// Клики по экрану (для меню и магазина)
+// Обновление цен на кнопках под холстом
+function updateUI() {
+  const gunCost = engine.upgrades.multishotLevel * 30;
+  btnUpgradeGun.textContent = `🔫 Оружие (lvl ${engine.upgrades.multishotLevel}) - $${gunCost}`;
+  btnUpgradeShield.textContent = `🛡️ Щит - $20`;
+  requestAnimationFrame(updateUI);
+}
+requestAnimationFrame(updateUI);
+
+// Клики по меню/магазину на холсте
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
@@ -21,8 +30,14 @@ canvas.addEventListener('click', (e) => {
 
 // Клавиатура
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'ArrowLeft' || e.code === 'KeyA') engine.player.velocity.x = -1;
-  if (e.code === 'ArrowRight' || e.code === 'KeyD') engine.player.velocity.x = 1;
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+    if (engine.state === 'MENU') engine.changeSelectedLevel(-1);
+    else engine.player.velocity.x = -1;
+  }
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+    if (engine.state === 'MENU') engine.changeSelectedLevel(1);
+    else engine.player.velocity.x = 1;
+  }
   if (e.code === 'Space') engine.shoot();
 });
 
@@ -37,7 +52,7 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-// Тач кнопки
+// Тач / Мышь для кнопок управления внизу
 function bindTouch(
   btn: HTMLButtonElement,
   onPress: () => void,
@@ -57,15 +72,40 @@ function bindTouch(
   });
 }
 
-bindTouch(btnLeft, () => engine.player.velocity.x = -1, () => engine.player.velocity.x = 0);
-bindTouch(btnRight, () => engine.player.velocity.x = 1, () => engine.player.velocity.x = 0);
-bindTouch(btnFire, () => engine.shoot());
+// Кнопка влево
+bindTouch(btnLeft, () => {
+  if (engine.state === 'MENU') {
+    engine.changeSelectedLevel(-1);
+  } else {
+    engine.player.velocity.x = -1;
+  }
+}, () => {
+  engine.player.velocity.x = 0;
+});
 
+// Кнопка вправо
+bindTouch(btnRight, () => {
+  if (engine.state === 'MENU') {
+    engine.changeSelectedLevel(1);
+  } else {
+    engine.player.velocity.x = 1;
+  }
+}, () => {
+  engine.player.velocity.x = 0;
+});
+
+// Кнопка АТАКА (Старт / Выстрел / Выход)
+bindTouch(btnFire, () => {
+  engine.shoot();
+});
+
+// Кнопка покупки оружия
 bindTouch(btnUpgradeGun, () => {
   const cost = engine.upgrades.multishotLevel * 30;
   engine.buyUpgrade('multishotLevel', cost);
 });
 
+// Кнопка покупки щита
 bindTouch(btnUpgradeShield, () => {
   engine.buyUpgrade('shieldLevel', 20);
 });

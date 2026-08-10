@@ -18,7 +18,6 @@ export interface Upgrades {
   shieldLevel: number;
 }
 
-// Простая синтетическая аудиосистема на Web Audio API
 class SoundManager {
   ctx: AudioContext | null = null;
 
@@ -218,7 +217,7 @@ export class Enemy implements GameObject {
       ctx.closePath();
       ctx.fill();
 
-      // Шкала здоровья
+      // HP
       ctx.fillStyle = '#333';
       ctx.fillRect(this.position.x, this.position.y - 12, this.size.width, 6);
       ctx.fillStyle = '#00ffcc';
@@ -304,11 +303,15 @@ export class GameEngine {
     sound.init();
 
     if (this.state === 'MENU') {
-      this.startLevel(1);
+      this.startLevel(this.selectedLevel);
+      return;
+    }
+    if (this.state === 'SHOP') {
+      this.openMenu();
       return;
     }
     if (this.state === 'GAMEOVER') {
-      this.state = 'MENU';
+      this.openMenu();
       return;
     }
     if (this.state !== 'PLAYING') return;
@@ -343,12 +346,18 @@ export class GameEngine {
     return false;
   }
 
+  changeSelectedLevel(dir: number) {
+    sound.init();
+    this.selectedLevel += dir;
+    if (this.selectedLevel < 1) this.selectedLevel = 3;
+    if (this.selectedLevel > 3) this.selectedLevel = 1;
+  }
+
   update(dt: number) {
     if (this.state !== 'PLAYING') return;
 
     this.player.update(dt, this.canvas.width);
 
-    // Уровень рассчитывается от стартового + набранных очков
     const currentCalcLevel = Math.floor(this.score / 100) + 1;
     if (currentCalcLevel > this.level) {
       this.level = currentCalcLevel;
@@ -356,7 +365,6 @@ export class GameEngine {
       this.enemies.push(new Enemy(this.canvas.width / 2 - 32, -70, 40, true, 10 * this.level));
     }
 
-    // Спавн обычных мобов (скорость строго зависит только от текущего уровня)
     this.spawnTimer += dt;
     const spawnRate = Math.max(0.5, 1.3 - this.level * 0.1);
     if (this.spawnTimer > spawnRate) {
@@ -369,7 +377,6 @@ export class GameEngine {
     this.bullets.forEach((b) => b.update(dt));
     this.enemies.forEach((e) => e.update(dt));
 
-    // Пули -> Враги
     for (const b of this.bullets) {
       for (const e of this.enemies) {
         if (b.active && e.active && this.checkCollision(b, e)) {
@@ -385,7 +392,6 @@ export class GameEngine {
       }
     }
 
-    // Враги -> Игрок
     for (const e of this.enemies) {
       if (e.active && this.checkCollision(e, this.player)) {
         e.active = false;
@@ -433,12 +439,11 @@ export class GameEngine {
       this.ctx.fillStyle = '#ffffff';
       this.ctx.font = '14px sans-serif';
       this.ctx.fillText(`Счет: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
-      this.ctx.fillText('Нажмите АТАКА для ВЫХОДА', this.canvas.width / 2, this.canvas.height / 2 + 40);
+      this.ctx.fillText('Нажмите АТАКА для Выхода', this.canvas.width / 2, this.canvas.height / 2 + 40);
       this.ctx.textAlign = 'left';
       return;
     }
 
-    // Игровой HUD
     this.ctx.fillStyle = '#00ffcc';
     this.ctx.font = '14px sans-serif';
     this.ctx.fillText(`Счет: ${this.score}`, 10, 25);
@@ -457,13 +462,13 @@ export class GameEngine {
     this.ctx.font = 'bold 22px sans-serif';
     this.ctx.fillText('SPACE ARCADE', this.canvas.width / 2, 60);
 
-    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillStyle = '#ffff00';
     this.ctx.font = '14px sans-serif';
     this.ctx.fillText(`Монеты: $${this.coins}`, this.canvas.width / 2, 90);
 
+    this.ctx.fillStyle = '#ffffff';
     this.ctx.fillText('ВЫБОР УРОВНЯ:', this.canvas.width / 2, 140);
 
-    // Отрисовка плашек уровней
     for (let i = 1; i <= 3; i++) {
       const y = 160 + (i - 1) * 45;
       this.ctx.fillStyle = this.selectedLevel === i ? '#00ffcc' : '#1a2634';
@@ -479,7 +484,7 @@ export class GameEngine {
 
     this.ctx.fillStyle = '#888';
     this.ctx.font = '12px sans-serif';
-    this.ctx.fillText('Нажмите АТАКА чтобы начать', this.canvas.width / 2, 380);
+    this.ctx.fillText('◀ ▶ выбор уровня | АТАКА начать', this.canvas.width / 2, 380);
 
     this.ctx.textAlign = 'left';
   }
@@ -488,7 +493,7 @@ export class GameEngine {
     this.ctx.textAlign = 'center';
     this.ctx.fillStyle = '#ff9900';
     this.ctx.font = 'bold 20px sans-serif';
-    this.ctx.fillText('МАГАЗИН УПРАВЛЕНИЯ', this.canvas.width / 2, 50);
+    this.ctx.fillText('МАГАЗИН', this.canvas.width / 2, 50);
 
     this.ctx.fillStyle = '#ffff00';
     this.ctx.font = '14px sans-serif';
@@ -501,7 +506,7 @@ export class GameEngine {
     this.ctx.fillStyle = '#00ffcc';
     this.ctx.fillRect(this.canvas.width / 2 - 80, 240, 160, 35);
     this.ctx.fillStyle = '#000';
-    this.ctx.fillText('В МЕНЮ', this.canvas.width / 2, 262);
+    this.ctx.fillText('В МЕНЮ (АТАКА)', this.canvas.width / 2, 262);
 
     this.ctx.textAlign = 'left';
   }
@@ -510,7 +515,6 @@ export class GameEngine {
     sound.init();
 
     if (this.state === 'MENU') {
-      // Выбор уровня
       for (let i = 1; i <= 3; i++) {
         const btnY = 160 + (i - 1) * 45;
         if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= btnY && y <= btnY + 35) {
@@ -519,7 +523,6 @@ export class GameEngine {
           return;
         }
       }
-      // Переход в магазин
       if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= 310 && y <= 310 + 35) {
         this.openShop();
         return;
