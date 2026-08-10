@@ -16,9 +16,12 @@ export interface GameObject {
 export interface Upgrades {
   multishotLevel: number;
   shieldLevel: number;
+  speedLevel: number;
+  maxHp: number;
+  magnetRadius: number;
 }
 
-class SoundManager {
+class SoftSoundManager {
   ctx: AudioContext | null = null;
 
   init() {
@@ -31,60 +34,74 @@ class SoundManager {
     }
   }
 
+  // Приятный синусоидальный бластер с плавной огибающей
   playLaser() {
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(600, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, this.ctx.currentTime); // A5
+    osc.frequency.exponentialRampToValueAtTime(320, this.ctx.currentTime + 0.12);
+    
+    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+
     osc.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start();
-    osc.stop(this.ctx.currentTime + 0.15);
+    osc.stop(this.ctx.currentTime + 0.12);
   }
 
+  // Мягкий объёмный взрыв
   playExplosion() {
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(120, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(160, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.25);
+
+    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+
     osc.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start();
-    osc.stop(this.ctx.currentTime + 0.3);
+    osc.stop(this.ctx.currentTime + 0.25);
   }
 
+  // Мажорный аккорд/колокольчик при бонусе или победе
   playPowerup() {
     if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.2);
-    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.2);
+    const now = this.ctx.currentTime;
+    [523.25, 659.25, 783.99].forEach((freq, index) => { // C5, E5, G5
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + index * 0.05);
+      
+      gain.gain.setValueAtTime(0.05, now + index * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.05 + 0.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+      osc.start(now + index * 0.05);
+      osc.stop(now + index * 0.05 + 0.2);
+    });
   }
 }
 
-export const sound = new SoundManager();
+export const sound = new SoftSoundManager();
 
 export class Player implements GameObject {
   position: Vector2D;
   size: Size = { width: 36, height: 40 };
   velocity: Vector2D = { x: 0, y: 0 };
-  speed = 320;
+  speed = 300;
   hasShield = false;
+  hp = 1;
 
   constructor(canvasWidth: number, canvasHeight: number) {
     this.position = {
@@ -103,26 +120,29 @@ export class Player implements GameObject {
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
-    ctx.fillStyle = '#ff9900';
+    // Двигатель
+    ctx.fillStyle = '#00ffff';
     ctx.beginPath();
     ctx.moveTo(this.position.x + 12, this.position.y + this.size.height);
-    ctx.lineTo(this.position.x + 18, this.position.y + this.size.height + 10 + Math.random() * 5);
+    ctx.lineTo(this.position.x + 18, this.position.y + this.size.height + 8 + Math.random() * 4);
     ctx.lineTo(this.position.x + 24, this.position.y + this.size.height);
     ctx.closePath();
     ctx.fill();
 
+    // Щит
     if (this.hasShield) {
-      ctx.strokeStyle = '#00ffff';
-      ctx.lineWidth = 3;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = '#00ffff';
+      ctx.strokeStyle = '#00ffcc';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00ffcc';
       ctx.beginPath();
-      ctx.arc(this.position.x + this.size.width / 2, this.position.y + this.size.height / 2, 28, 0, Math.PI * 2);
+      ctx.arc(this.position.x + this.size.width / 2, this.position.y + this.size.height / 2, 26, 0, Math.PI * 2);
       ctx.stroke();
     }
 
+    // Корпус
     ctx.fillStyle = '#00ffcc';
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 8;
     ctx.shadowColor = '#00ffcc';
     ctx.beginPath();
     ctx.moveTo(this.position.x + this.size.width / 2, this.position.y);
@@ -136,11 +156,11 @@ export class Player implements GameObject {
 
 export class Bullet implements GameObject {
   position: Vector2D;
-  size: Size = { width: 4, height: 16 };
+  size: Size = { width: 4, height: 14 };
   velocity: Vector2D;
   active = true;
 
-  constructor(x: number, y: number, vx = 0, vy = -500) {
+  constructor(x: number, y: number, vx = 0, vy = -550) {
     this.position = { x, y };
     this.velocity = { x: vx, y: vy };
   }
@@ -156,31 +176,52 @@ export class Bullet implements GameObject {
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
     ctx.fillStyle = '#ffff00';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 6;
     ctx.shadowColor = '#ffff00';
     ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
     ctx.restore();
   }
 }
 
+export type EnemyType = 'FAST' | 'NORMAL' | 'HEAVY' | 'BOSS';
+
 export class Enemy implements GameObject {
   position: Vector2D;
-  size: Size = { width: 32, height: 32 };
+  size: Size;
   speed: number;
   hp: number;
   maxHp: number;
-  isBoss: boolean;
+  type: EnemyType;
   active = true;
 
-  constructor(x: number, y: number, speed = 120, isBoss = false, hp = 1) {
+  constructor(x: number, y: number, type: EnemyType, level: number) {
     this.position = { x, y };
-    this.speed = speed;
-    this.isBoss = isBoss;
-    this.hp = hp;
-    this.maxHp = hp;
-    if (isBoss) {
-      this.size = { width: 64, height: 64 };
+    this.type = type;
+
+    switch (type) {
+      case 'FAST':
+        this.size = { width: 24, height: 24 };
+        this.speed = 180 + level * 10;
+        this.hp = 1;
+        break;
+      case 'HEAVY':
+        this.size = { width: 42, height: 42 };
+        this.speed = 70 + level * 5;
+        this.hp = 3 + Math.floor(level / 3);
+        break;
+      case 'BOSS':
+        this.size = { width: 68, height: 68 };
+        this.speed = 35 + level * 2;
+        this.hp = 15 + level * 10;
+        break;
+      case 'NORMAL':
+      default:
+        this.size = { width: 32, height: 32 };
+        this.speed = 110 + level * 8;
+        this.hp = 1 + Math.floor(level / 5);
+        break;
     }
+    this.maxHp = this.hp;
   }
 
   update(dt: number) {
@@ -195,24 +236,40 @@ export class Enemy implements GameObject {
     const cx = this.position.x + this.size.width / 2;
     const cy = this.position.y + this.size.height / 2;
 
-    if (this.isBoss) {
+    if (this.type === 'BOSS') {
       ctx.fillStyle = '#ff0055';
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 12;
       ctx.shadowColor = '#ff0055';
       ctx.beginPath();
-      ctx.moveTo(cx, cy + 32);
-      ctx.lineTo(cx - 32, cy - 32);
-      ctx.lineTo(cx + 32, cy - 32);
+      ctx.moveTo(cx, cy + 34);
+      ctx.lineTo(cx - 34, cy - 34);
+      ctx.lineTo(cx + 34, cy - 34);
       ctx.closePath();
       ctx.fill();
 
+      // HP Bar
       ctx.fillStyle = '#333';
-      ctx.fillRect(this.position.x, this.position.y - 12, this.size.width, 6);
+      ctx.fillRect(this.position.x, this.position.y - 10, this.size.width, 5);
       ctx.fillStyle = '#00ffcc';
-      ctx.fillRect(this.position.x, this.position.y - 12, this.size.width * (this.hp / this.maxHp), 6);
+      ctx.fillRect(this.position.x, this.position.y - 10, this.size.width * (this.hp / this.maxHp), 5);
+    } else if (this.type === 'HEAVY') {
+      ctx.fillStyle = '#9900ff';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = '#9900ff';
+      ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+    } else if (this.type === 'FAST') {
+      ctx.fillStyle = '#ffcc00';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = '#ffcc00';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 12);
+      ctx.lineTo(cx - 12, cy - 12);
+      ctx.lineTo(cx + 12, cy - 12);
+      ctx.closePath();
+      ctx.fill();
     } else {
       ctx.fillStyle = '#ff5500';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 6;
       ctx.shadowColor = '#ff5500';
       ctx.fillRect(this.position.x, cy - 4, this.size.width, 8);
       ctx.fillStyle = '#ffff00';
@@ -238,7 +295,10 @@ export class GameEngine {
   isLoopRunning = false;
   upgrades: Upgrades = {
     multishotLevel: 1,
-    shieldLevel: 0
+    shieldLevel: 0,
+    speedLevel: 1,
+    maxHp: 1,
+    magnetRadius: 0
   };
 
   constructor(canvas: HTMLCanvasElement) {
@@ -250,12 +310,19 @@ export class GameEngine {
 
   startLevel(lvl: number) {
     sound.init();
-    this.level = lvl;
-    this.score = (lvl - 1) * 100;
+    this.level = Math.min(Math.max(lvl, 1), 20);
     this.enemies = [];
     this.bullets = [];
     this.player = new Player(this.canvas.width, this.canvas.height);
+    this.player.speed = 260 + this.upgrades.speedLevel * 40;
+    this.player.hp = this.upgrades.maxHp;
     if (this.upgrades.shieldLevel > 0) this.player.hasShield = true;
+
+    // Если босс-уровень (каждый 5-й)
+    if (this.level % 5 === 0) {
+      this.enemies.push(new Enemy(this.canvas.width / 2 - 34, -70, 'BOSS', this.level));
+    }
+
     this.state = 'PLAYING';
     this.syncUI();
   }
@@ -302,8 +369,8 @@ export class GameEngine {
       this.bullets.push(new Bullet(centerX + 8, topY));
     } else {
       this.bullets.push(new Bullet(centerX, topY));
-      this.bullets.push(new Bullet(centerX - 12, topY, -100));
-      this.bullets.push(new Bullet(centerX + 12, topY, 100));
+      this.bullets.push(new Bullet(centerX - 12, topY, -120));
+      this.bullets.push(new Bullet(centerX + 12, topY, 120));
     }
   }
 
@@ -312,9 +379,8 @@ export class GameEngine {
     if (this.coins >= cost) {
       this.coins -= cost;
       this.upgrades[type]++;
-      if (type === 'shieldLevel') {
-        this.player.hasShield = true;
-      }
+      if (type === 'shieldLevel') this.player.hasShield = true;
+      if (type === 'maxHp') this.player.hp++;
       sound.playPowerup();
       this.syncUI();
       return true;
@@ -327,25 +393,25 @@ export class GameEngine {
 
     this.player.update(dt, this.canvas.width);
 
-    const currentCalcLevel = Math.floor(this.score / 100) + 1;
-    if (currentCalcLevel > this.level) {
-      this.level = currentCalcLevel;
-      sound.playPowerup();
-      this.enemies.push(new Enemy(this.canvas.width / 2 - 32, -70, 40, true, 10 * this.level));
-    }
-
+    // Генерация мобов
     this.spawnTimer += dt;
-    const spawnRate = Math.max(0.5, 1.3 - this.level * 0.1);
+    const spawnRate = Math.max(0.35, 1.2 - this.level * 0.04);
     if (this.spawnTimer > spawnRate) {
       this.spawnTimer = 0;
       const x = Math.random() * (this.canvas.width - 40);
-      const enemySpeed = 100 + this.level * 25;
-      this.enemies.push(new Enemy(x, -40, enemySpeed, false, 1));
+      const rand = Math.random();
+      
+      let type: EnemyType = 'NORMAL';
+      if (rand < 0.25) type = 'FAST';
+      else if (rand < 0.45 && this.level > 2) type = 'HEAVY';
+
+      this.enemies.push(new Enemy(x, -40, type, this.level));
     }
 
     this.bullets.forEach((b) => b.update(dt));
     this.enemies.forEach((e) => e.update(dt));
 
+    // Попадания пуль
     for (const b of this.bullets) {
       for (const e of this.enemies) {
         if (b.active && e.active && this.checkCollision(b, e)) {
@@ -354,13 +420,14 @@ export class GameEngine {
           if (e.hp <= 0) {
             e.active = false;
             sound.playExplosion();
-            this.score += e.isBoss ? 50 : 10;
-            this.coins += e.isBoss ? 25 : 5;
+            this.score += e.type === 'BOSS' ? 100 : 10;
+            this.coins += e.type === 'BOSS' ? 30 : 3;
           }
         }
       }
     }
 
+    // Столкновения с игроком
     for (const e of this.enemies) {
       if (e.active && this.checkCollision(e, this.player)) {
         e.active = false;
@@ -369,8 +436,11 @@ export class GameEngine {
           this.player.hasShield = false;
           this.upgrades.shieldLevel = 0;
         } else {
-          this.state = 'GAMEOVER';
-          this.syncUI();
+          this.player.hp--;
+          if (this.player.hp <= 0) {
+            this.state = 'GAMEOVER';
+            this.syncUI();
+          }
         }
       }
     }
@@ -393,11 +463,12 @@ export class GameEngine {
     if (this.state !== 'PLAYING') return;
 
     this.ctx.fillStyle = '#00ffcc';
-    this.ctx.font = '14px sans-serif';
-    this.ctx.fillText(`Счет: ${this.score}`, 10, 25);
-    this.ctx.fillText(`Уровень: ${this.level}`, 10, 45);
+    this.ctx.font = '13px sans-serif';
+    this.ctx.fillText(`Счет: ${this.score}`, 10, 20);
+    this.ctx.fillText(`Уровень: ${this.level} / 20`, 10, 36);
+    this.ctx.fillText(`ХП: ${'❤️'.repeat(this.player.hp)}`, 10, 52);
     this.ctx.fillStyle = '#ffff00';
-    this.ctx.fillText(`Монеты: $${this.coins}`, 10, 65);
+    this.ctx.fillText(`Монеты: $${this.coins}`, 10, 68);
 
     this.player.draw(this.ctx);
     this.bullets.forEach((b) => b.draw(this.ctx));
@@ -422,11 +493,20 @@ export class GameEngine {
     const finalScore = document.getElementById('finalScore');
     if (finalScore) finalScore.textContent = `Счет: ${this.score}`;
 
+    const finalCoins = document.getElementById('finalCoins');
+    if (finalCoins) finalCoins.textContent = `Монеты в кошельке: $${this.coins}`;
+
+    // Обновляем ценники в магазине
     const gunCost = this.upgrades.multishotLevel * 30;
     const shopGunBtn = document.getElementById('shopGunBtn');
-    if (shopGunBtn) shopGunBtn.textContent = `Оружие (lvl ${this.upgrades.multishotLevel}) - $${gunCost}`;
+    if (shopGunBtn) shopGunBtn.textContent = `🔫 Пушка (lvl ${this.upgrades.multishotLevel}) - $${gunCost}`;
 
-    const btnUpgradeGun = document.getElementById('btnUpgradeGun');
-    if (btnUpgradeGun) btnUpgradeGun.textContent = `🔫 Оружие (lvl ${this.upgrades.multishotLevel}) - $${gunCost}`;
+    const speedCost = this.upgrades.speedLevel * 25;
+    const shopSpeedBtn = document.getElementById('shopSpeedBtn');
+    if (shopSpeedBtn) shopSpeedBtn.textContent = `⚡ Двигатель (lvl ${this.upgrades.speedLevel}) - $${speedCost}`;
+
+    const hpCost = this.upgrades.maxHp * 40;
+    const shopHpBtn = document.getElementById('shopHpBtn');
+    if (shopHpBtn) shopHpBtn.textContent = `❤️ Макс. ХП (${this.upgrades.maxHp}) - $${hpCost}`;
   }
 }

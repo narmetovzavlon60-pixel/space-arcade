@@ -10,33 +10,48 @@ const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const engine = new GameEngine(canvas);
 window.gameEngine = engine;
 
+// Динамически наполняем сетку из 20 уровней
+const levelGrid = document.getElementById('levelGrid');
+if (levelGrid) {
+  levelGrid.innerHTML = '';
+  for (let i = 1; i <= 20; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'lvl-btn';
+    btn.textContent = `Ур. ${i}`;
+    btn.onclick = () => engine.startLevel(i);
+    levelGrid.appendChild(btn);
+  }
+}
+
 const btnLeft = document.getElementById('btnLeft') as HTMLButtonElement;
 const btnRight = document.getElementById('btnRight') as HTMLButtonElement;
 const btnFire = document.getElementById('btnFire') as HTMLButtonElement;
-const btnUpgradeGun = document.getElementById('btnUpgradeGun') as HTMLButtonElement;
-const btnUpgradeShield = document.getElementById('btnUpgradeShield') as HTMLButtonElement;
-
-const shopGunBtn = document.getElementById('shopGunBtn') as HTMLButtonElement;
-const shopShieldBtn = document.getElementById('shopShieldBtn') as HTMLButtonElement;
 
 // Кнопки магазина
+const shopGunBtn = document.getElementById('shopGunBtn') as HTMLButtonElement;
+const shopShieldBtn = document.getElementById('shopShieldBtn') as HTMLButtonElement;
+const shopSpeedBtn = document.getElementById('shopSpeedBtn') as HTMLButtonElement;
+const shopHpBtn = document.getElementById('shopHpBtn') as HTMLButtonElement;
+const shopMagnetBtn = document.getElementById('shopMagnetBtn') as HTMLButtonElement;
+
 shopGunBtn.addEventListener('click', () => {
-  const cost = engine.upgrades.multishotLevel * 30;
-  engine.buyUpgrade('multishotLevel', cost);
+  engine.buyUpgrade('multishotLevel', engine.upgrades.multishotLevel * 30);
 });
 
 shopShieldBtn.addEventListener('click', () => {
   engine.buyUpgrade('shieldLevel', 20);
 });
 
-// Кнопки быстрой покупки под холстом
-btnUpgradeGun.addEventListener('click', () => {
-  const cost = engine.upgrades.multishotLevel * 30;
-  engine.buyUpgrade('multishotLevel', cost);
+shopSpeedBtn.addEventListener('click', () => {
+  engine.buyUpgrade('speedLevel', engine.upgrades.speedLevel * 25);
 });
 
-btnUpgradeShield.addEventListener('click', () => {
-  engine.buyUpgrade('shieldLevel', 20);
+shopHpBtn.addEventListener('click', () => {
+  engine.buyUpgrade('maxHp', engine.upgrades.maxHp * 40);
+});
+
+shopMagnetBtn.addEventListener('click', () => {
+  engine.buyUpgrade('magnetRadius', 50);
 });
 
 // Клавиатура
@@ -57,7 +72,7 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-// Привязка тач/мыши для игровых кнопок
+// Тач-управление
 function bindTouch(
   btn: HTMLButtonElement,
   onPress: () => void,
