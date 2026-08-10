@@ -1,7 +1,6 @@
 import './style.css';
 import { GameEngine } from './game';
 
-// Расширяем глобальный интерфейс Window для Telegram Web App SDK
 declare global {
   interface Window {
     Telegram?: {
@@ -13,7 +12,6 @@ declare global {
   }
 }
 
-// Инициализация Telegram Mini App
 if (window.Telegram?.WebApp) {
   window.Telegram.WebApp.ready();
   window.Telegram.WebApp.expand();
@@ -21,6 +19,20 @@ if (window.Telegram?.WebApp) {
 
 const canvas = document.querySelector<HTMLCanvasElement>('#gameCanvas')!;
 const engine = new GameEngine(canvas);
+
+// Автоматический запуск при старте приложения
+engine.init();
+
+// Запуск/перезапуск по тапу на холст (работает и на десктопе, и на мобильных)
+const handleStart = (e: Event) => {
+  e.preventDefault();
+  if (engine.state !== 'PLAYING') {
+    engine.start();
+  }
+};
+
+canvas.addEventListener('click', handleStart);
+canvas.addEventListener('touchstart', handleStart, { passive: false });
 
 // Управление с клавиатуры
 window.addEventListener('keydown', (e) => {
@@ -35,20 +47,18 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-// Сенсорное управление для смартфонов
+// Сенсорные кнопки управления
 const btnLeft = document.querySelector('#btn-left')!;
 const btnRight = document.querySelector('#btn-right')!;
 const btnFire = document.querySelector('#btn-fire')!;
 
 const bindTouch = (elem: Element, onStart: () => void, onEnd: () => void) => {
-  elem.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(); });
-  elem.addEventListener('touchend', (e) => { e.preventDefault(); onEnd(); });
+  elem.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(); }, { passive: false });
+  elem.addEventListener('touchend', (e) => { e.preventDefault(); onEnd(); }, { passive: false });
+  elem.addEventListener('mousedown', () => onStart());
+  elem.addEventListener('mouseup', () => onEnd());
 };
 
 bindTouch(btnLeft, () => engine.player.velocity.x = -1, () => engine.player.velocity.x = 0);
 bindTouch(btnRight, () => engine.player.velocity.x = 1, () => engine.player.velocity.x = 0);
 bindTouch(btnFire, () => engine.shoot(), () => {});
-
-canvas.addEventListener('click', () => {
-  if (engine.state !== 'PLAYING') engine.start();
-});
