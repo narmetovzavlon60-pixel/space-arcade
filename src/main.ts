@@ -1,37 +1,25 @@
-import './style.css';
 import { GameEngine } from './game';
 
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        ready: () => void;
-        expand: () => void;
-      };
-    };
-  }
-}
+const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+const btnLeft = document.getElementById('btnLeft') as HTMLButtonElement;
+const btnRight = document.getElementById('btnRight') as HTMLButtonElement;
+const btnFire = document.getElementById('btnFire') as HTMLButtonElement;
+const btnUpgradeGun = document.getElementById('btnUpgradeGun') as HTMLButtonElement;
+const btnUpgradeShield = document.getElementById('btnUpgradeShield') as HTMLButtonElement;
 
-if (window.Telegram?.WebApp) {
-  window.Telegram.WebApp.ready();
-  window.Telegram.WebApp.expand();
-}
-
-const canvas = document.querySelector<HTMLCanvasElement>('#gameCanvas')!;
 const engine = new GameEngine(canvas);
 
-engine.init();
+// Клики по экрану (для меню и магазина)
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+  engine.handleCanvasClick(x, y);
+});
 
-const handleStart = (e: Event) => {
-  e.preventDefault();
-  if (engine.state !== 'PLAYING') {
-    engine.start();
-  }
-};
-
-canvas.addEventListener('click', handleStart);
-canvas.addEventListener('touchstart', handleStart, { passive: false });
-
+// Клавиатура
 window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') engine.player.velocity.x = -1;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') engine.player.velocity.x = 1;
@@ -39,39 +27,45 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-  if (['ArrowLeft', 'KeyA', 'ArrowRight', 'KeyD'].includes(e.code)) {
+  if (
+    e.code === 'ArrowLeft' ||
+    e.code === 'KeyA' ||
+    e.code === 'ArrowRight' ||
+    e.code === 'KeyD'
+  ) {
     engine.player.velocity.x = 0;
   }
 });
 
-const btnLeft = document.querySelector('#btn-left')!;
-const btnRight = document.querySelector('#btn-right')!;
-const btnFire = document.querySelector('#btn-fire')!;
-
-const bindTouch = (elem: Element, onStart: () => void, onEnd: () => void) => {
-  elem.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(); }, { passive: false });
-  elem.addEventListener('touchend', (e) => { e.preventDefault(); onEnd(); }, { passive: false });
-  elem.addEventListener('mousedown', () => onStart());
-  elem.addEventListener('mouseup', () => onEnd());
-};
+// Тач кнопки
+function bindTouch(
+  btn: HTMLButtonElement,
+  onPress: () => void,
+  onRelease?: () => void
+) {
+  btn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    onPress();
+  });
+  btn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (onRelease) onRelease();
+  });
+  btn.addEventListener('mousedown', onPress);
+  btn.addEventListener('mouseup', () => {
+    if (onRelease) onRelease();
+  });
+}
 
 bindTouch(btnLeft, () => engine.player.velocity.x = -1, () => engine.player.velocity.x = 0);
 bindTouch(btnRight, () => engine.player.velocity.x = 1, () => engine.player.velocity.x = 0);
-bindTouch(btnFire, () => engine.shoot(), () => {});
+bindTouch(btnFire, () => engine.shoot());
 
-// Магазин
-const buyMulti = document.querySelector('#buy-multi')!;
-const buyShield = document.querySelector('#buy-shield')!;
-const lvlMulti = document.querySelector('#lvl-multi')!;
-
-buyMulti.addEventListener('click', () => {
-  if (engine.upgrades.multishotLevel < 3 && engine.buyUpgrade('multishotLevel', 30)) {
-    lvlMulti.textContent = engine.upgrades.multishotLevel.toString();
-  }
+bindTouch(btnUpgradeGun, () => {
+  const cost = engine.upgrades.multishotLevel * 30;
+  engine.buyUpgrade('multishotLevel', cost);
 });
 
-buyShield.addEventListener('click', () => {
-  if (engine.upgrades.shieldLevel === 0 && engine.buyUpgrade('shieldLevel', 20)) {
-    buyShield.classList.add('active');
-  }
+bindTouch(btnUpgradeShield, () => {
+  engine.buyUpgrade('shieldLevel', 20);
 });

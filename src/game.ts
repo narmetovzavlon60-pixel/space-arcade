@@ -18,6 +18,68 @@ export interface Upgrades {
   shieldLevel: number;
 }
 
+// Простая синтетическая аудиосистема на Web Audio API
+class SoundManager {
+  ctx: AudioContext | null = null;
+
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.ctx = new AudioCtx();
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  playLaser() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.15);
+  }
+
+  playExplosion() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.3);
+  }
+
+  playPowerup() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.2);
+  }
+}
+
+export const sound = new SoundManager();
+
 export class Player implements GameObject {
   position: Vector2D;
   size: Size = { width: 36, height: 40 };
@@ -43,7 +105,7 @@ export class Player implements GameObject {
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
 
-    // Пламя двигателя
+    // Пламя
     ctx.fillStyle = '#ff9900';
     ctx.beginPath();
     ctx.moveTo(this.position.x + 12, this.position.y + this.size.height);
@@ -69,7 +131,7 @@ export class Player implements GameObject {
       ctx.stroke();
     }
 
-    // Корпус корабля
+    // Корабль
     ctx.fillStyle = '#00ffcc';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#00ffcc';
@@ -89,11 +151,9 @@ export class Bullet implements GameObject {
   size: Size = { width: 4, height: 16 };
   velocity: Vector2D;
   active = true;
-  isEnemy = false;
 
-  constructor(x: number, y: number, isEnemy = false, vx = 0, vy = -500) {
+  constructor(x: number, y: number, vx = 0, vy = -500) {
     this.position = { x, y };
-    this.isEnemy = isEnemy;
     this.velocity = { x: vx, y: vy };
   }
 
@@ -107,9 +167,9 @@ export class Bullet implements GameObject {
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
-    ctx.fillStyle = this.isEnemy ? '#ff0055' : '#ffff00';
+    ctx.fillStyle = '#ffff00';
     ctx.shadowBlur = 8;
-    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowColor = '#ffff00';
     ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
     ctx.restore();
   }
@@ -132,7 +192,6 @@ export class Enemy implements GameObject {
     this.maxHp = hp;
     if (isBoss) {
       this.size = { width: 64, height: 64 };
-      this.speed = 50;
     }
   }
 
@@ -149,14 +208,13 @@ export class Enemy implements GameObject {
     const cy = this.position.y + this.size.height / 2;
 
     if (this.isBoss) {
-      // Отрисовка Босса
       ctx.fillStyle = '#ff0055';
       ctx.shadowBlur = 15;
       ctx.shadowColor = '#ff0055';
       ctx.beginPath();
-      ctx.moveTo(cx, cy + 30);
-      ctx.lineTo(cx - 30, cy - 30);
-      ctx.lineTo(cx + 30, cy - 30);
+      ctx.moveTo(cx, cy + 32);
+      ctx.lineTo(cx - 32, cy - 32);
+      ctx.lineTo(cx + 32, cy - 32);
       ctx.closePath();
       ctx.fill();
 
@@ -166,14 +224,10 @@ export class Enemy implements GameObject {
       ctx.fillStyle = '#00ffcc';
       ctx.fillRect(this.position.x, this.position.y - 12, this.size.width * (this.hp / this.maxHp), 6);
     } else {
-      // Инопланетный дрон
       ctx.fillStyle = '#ff5500';
       ctx.shadowBlur = 8;
       ctx.shadowColor = '#ff5500';
-      
-      // Крылья
       ctx.fillRect(this.position.x, cy - 4, this.size.width, 8);
-      // Ядро
       ctx.fillStyle = '#ffff00';
       ctx.beginPath();
       ctx.arc(cx, cy, 8, 0, Math.PI * 2);
@@ -190,11 +244,13 @@ export class GameEngine {
   player: Player;
   bullets: Bullet[] = [];
   enemies: Enemy[] = [];
-  state: 'MENU' | 'PLAYING' | 'GAMEOVER' = 'MENU';
+  state: 'MENU' | 'SHOP' | 'PLAYING' | 'GAMEOVER' = 'MENU';
   score = 0;
   level = 1;
-  coins = 0;
+  selectedLevel = 1;
+  coins = 50;
   spawnTimer = 0;
+  isLoopRunning = false;
   upgrades: Upgrades = {
     multishotLevel: 1,
     shieldLevel: 0
@@ -204,22 +260,35 @@ export class GameEngine {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.player = new Player(canvas.width, canvas.height);
+    this.startLoop();
   }
 
-  init() {
-    this.state = 'PLAYING';
-    this.score = 0;
-    this.level = 1;
-    this.coins = 50;
+  startLevel(lvl: number) {
+    sound.init();
+    this.level = lvl;
+    this.selectedLevel = lvl;
+    this.score = (lvl - 1) * 100;
     this.enemies = [];
     this.bullets = [];
     this.player = new Player(this.canvas.width, this.canvas.height);
-    this.upgrades = { multishotLevel: 1, shieldLevel: 0 };
-    this.start();
+    if (this.upgrades.shieldLevel > 0) this.player.hasShield = true;
+    this.state = 'PLAYING';
   }
 
-  start() {
+  openShop() {
+    sound.init();
+    this.state = 'SHOP';
+  }
+
+  openMenu() {
+    this.state = 'MENU';
+  }
+
+  startLoop() {
+    if (this.isLoopRunning) return;
+    this.isLoopRunning = true;
     let lastTime = performance.now();
+
     const loop = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
@@ -232,11 +301,19 @@ export class GameEngine {
   }
 
   shoot() {
-    if (this.state !== 'PLAYING') {
-      if (this.state === 'GAMEOVER') this.init();
+    sound.init();
+
+    if (this.state === 'MENU') {
+      this.startLevel(1);
       return;
     }
+    if (this.state === 'GAMEOVER') {
+      this.state = 'MENU';
+      return;
+    }
+    if (this.state !== 'PLAYING') return;
 
+    sound.playLaser();
     const centerX = this.player.position.x + this.player.size.width / 2 - 2;
     const topY = this.player.position.y;
 
@@ -247,18 +324,20 @@ export class GameEngine {
       this.bullets.push(new Bullet(centerX + 8, topY));
     } else {
       this.bullets.push(new Bullet(centerX, topY));
-      this.bullets.push(new Bullet(centerX - 12, topY, false, -100));
-      this.bullets.push(new Bullet(centerX + 12, topY, false, 100));
+      this.bullets.push(new Bullet(centerX - 12, topY, -100));
+      this.bullets.push(new Bullet(centerX + 12, topY, 100));
     }
   }
 
   buyUpgrade(type: keyof Upgrades, cost: number): boolean {
+    sound.init();
     if (this.coins >= cost) {
       this.coins -= cost;
       this.upgrades[type]++;
       if (type === 'shieldLevel') {
         this.player.hasShield = true;
       }
+      sound.playPowerup();
       return true;
     }
     return false;
@@ -269,28 +348,28 @@ export class GameEngine {
 
     this.player.update(dt, this.canvas.width);
 
-    // Расчет текущего уровня по очкам
-    const newLevel = Math.floor(this.score / 100) + 1;
-    if (newLevel > this.level) {
-      this.level = newLevel;
-      // Появление босса с каждым новым уровнем
+    // Уровень рассчитывается от стартового + набранных очков
+    const currentCalcLevel = Math.floor(this.score / 100) + 1;
+    if (currentCalcLevel > this.level) {
+      this.level = currentCalcLevel;
+      sound.playPowerup();
       this.enemies.push(new Enemy(this.canvas.width / 2 - 32, -70, 40, true, 10 * this.level));
     }
 
-    // Спавн обычных врагов
+    // Спавн обычных мобов (скорость строго зависит только от текущего уровня)
     this.spawnTimer += dt;
     const spawnRate = Math.max(0.5, 1.3 - this.level * 0.1);
     if (this.spawnTimer > spawnRate) {
       this.spawnTimer = 0;
       const x = Math.random() * (this.canvas.width - 40);
-      const enemySpeed = 110 + this.level * 20;
+      const enemySpeed = 100 + this.level * 25;
       this.enemies.push(new Enemy(x, -40, enemySpeed, false, 1));
     }
 
     this.bullets.forEach((b) => b.update(dt));
     this.enemies.forEach((e) => e.update(dt));
 
-    // Коллизии: Пули -> Враги
+    // Пули -> Враги
     for (const b of this.bullets) {
       for (const e of this.enemies) {
         if (b.active && e.active && this.checkCollision(b, e)) {
@@ -298,6 +377,7 @@ export class GameEngine {
           e.hp--;
           if (e.hp <= 0) {
             e.active = false;
+            sound.playExplosion();
             this.score += e.isBoss ? 50 : 10;
             this.coins += e.isBoss ? 25 : 5;
           }
@@ -305,10 +385,11 @@ export class GameEngine {
       }
     }
 
-    // Коллизии: Враги -> Игрок
+    // Враги -> Игрок
     for (const e of this.enemies) {
       if (e.active && this.checkCollision(e, this.player)) {
         e.active = false;
+        sound.playExplosion();
         if (this.player.hasShield) {
           this.player.hasShield = false;
           this.upgrades.shieldLevel = 0;
@@ -334,19 +415,30 @@ export class GameEngine {
   render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    if (this.state === 'MENU') {
+      this.renderMenu();
+      return;
+    }
+
+    if (this.state === 'SHOP') {
+      this.renderShop();
+      return;
+    }
+
     if (this.state === 'GAMEOVER') {
       this.ctx.fillStyle = '#ff0055';
       this.ctx.font = 'bold 22px sans-serif';
       this.ctx.textAlign = 'center';
-      this.ctx.fillText('ИГРА ОКОНЧАНА', this.canvas.width / 2, this.canvas.height / 2 - 10);
+      this.ctx.fillText('ИГРА ОКОНЧАНА', this.canvas.width / 2, this.canvas.height / 2 - 20);
       this.ctx.fillStyle = '#ffffff';
       this.ctx.font = '14px sans-serif';
-      this.ctx.fillText('Нажмите АТАКА для перезапуска', this.canvas.width / 2, this.canvas.height / 2 + 20);
+      this.ctx.fillText(`Счет: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
+      this.ctx.fillText('Нажмите АТАКА для ВЫХОДА', this.canvas.width / 2, this.canvas.height / 2 + 40);
       this.ctx.textAlign = 'left';
       return;
     }
 
-    // Верхний HUD
+    // Игровой HUD
     this.ctx.fillStyle = '#00ffcc';
     this.ctx.font = '14px sans-serif';
     this.ctx.fillText(`Счет: ${this.score}`, 10, 25);
@@ -357,5 +449,88 @@ export class GameEngine {
     this.player.draw(this.ctx);
     this.bullets.forEach((b) => b.draw(this.ctx));
     this.enemies.forEach((e) => e.draw(this.ctx));
+  }
+
+  renderMenu() {
+    this.ctx.textAlign = 'center';
+    this.ctx.fillStyle = '#00ffcc';
+    this.ctx.font = 'bold 22px sans-serif';
+    this.ctx.fillText('SPACE ARCADE', this.canvas.width / 2, 60);
+
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = '14px sans-serif';
+    this.ctx.fillText(`Монеты: $${this.coins}`, this.canvas.width / 2, 90);
+
+    this.ctx.fillText('ВЫБОР УРОВНЯ:', this.canvas.width / 2, 140);
+
+    // Отрисовка плашек уровней
+    for (let i = 1; i <= 3; i++) {
+      const y = 160 + (i - 1) * 45;
+      this.ctx.fillStyle = this.selectedLevel === i ? '#00ffcc' : '#1a2634';
+      this.ctx.fillRect(this.canvas.width / 2 - 80, y, 160, 35);
+      this.ctx.fillStyle = this.selectedLevel === i ? '#000' : '#fff';
+      this.ctx.fillText(`Уровень ${i}`, this.canvas.width / 2, y + 22);
+    }
+
+    this.ctx.fillStyle = '#ff9900';
+    this.ctx.fillRect(this.canvas.width / 2 - 80, 310, 160, 35);
+    this.ctx.fillStyle = '#000';
+    this.ctx.fillText('МАГАЗИН', this.canvas.width / 2, 332);
+
+    this.ctx.fillStyle = '#888';
+    this.ctx.font = '12px sans-serif';
+    this.ctx.fillText('Нажмите АТАКА чтобы начать', this.canvas.width / 2, 380);
+
+    this.ctx.textAlign = 'left';
+  }
+
+  renderShop() {
+    this.ctx.textAlign = 'center';
+    this.ctx.fillStyle = '#ff9900';
+    this.ctx.font = 'bold 20px sans-serif';
+    this.ctx.fillText('МАГАЗИН УПРАВЛЕНИЯ', this.canvas.width / 2, 50);
+
+    this.ctx.fillStyle = '#ffff00';
+    this.ctx.font = '14px sans-serif';
+    this.ctx.fillText(`Баланс: $${this.coins}`, this.canvas.width / 2, 80);
+
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillText(`Оружие Lvl: ${this.upgrades.multishotLevel}`, this.canvas.width / 2, 130);
+    this.ctx.fillText(`Щит: ${this.player.hasShield ? 'АКТИВЕН' : 'НЕТ'}`, this.canvas.width / 2, 170);
+
+    this.ctx.fillStyle = '#00ffcc';
+    this.ctx.fillRect(this.canvas.width / 2 - 80, 240, 160, 35);
+    this.ctx.fillStyle = '#000';
+    this.ctx.fillText('В МЕНЮ', this.canvas.width / 2, 262);
+
+    this.ctx.textAlign = 'left';
+  }
+
+  handleCanvasClick(x: number, y: number) {
+    sound.init();
+
+    if (this.state === 'MENU') {
+      // Выбор уровня
+      for (let i = 1; i <= 3; i++) {
+        const btnY = 160 + (i - 1) * 45;
+        if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= btnY && y <= btnY + 35) {
+          this.selectedLevel = i;
+          this.startLevel(i);
+          return;
+        }
+      }
+      // Переход в магазин
+      if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= 310 && y <= 310 + 35) {
+        this.openShop();
+        return;
+      }
+    }
+
+    if (this.state === 'SHOP') {
+      if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= 240 && y <= 240 + 35) {
+        this.openMenu();
+        return;
+      }
+    }
   }
 }
