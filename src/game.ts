@@ -1,4 +1,4 @@
-import { Vector2D, Size, GameObject, GameState } from './types';
+import type { Vector2D, Size, GameObject, GameState } from './types';
 
 export class Player implements GameObject {
   position: Vector2D;
