@@ -103,8 +103,6 @@ export class Player implements GameObject {
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
-
-    // Пламя
     ctx.fillStyle = '#ff9900';
     ctx.beginPath();
     ctx.moveTo(this.position.x + 12, this.position.y + this.size.height);
@@ -113,24 +111,16 @@ export class Player implements GameObject {
     ctx.closePath();
     ctx.fill();
 
-    // Щит
     if (this.hasShield) {
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 3;
       ctx.shadowBlur = 12;
       ctx.shadowColor = '#00ffff';
       ctx.beginPath();
-      ctx.arc(
-        this.position.x + this.size.width / 2,
-        this.position.y + this.size.height / 2,
-        28,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(this.position.x + this.size.width / 2, this.position.y + this.size.height / 2, 28, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // Корабль
     ctx.fillStyle = '#00ffcc';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#00ffcc';
@@ -140,7 +130,6 @@ export class Player implements GameObject {
     ctx.lineTo(this.position.x, this.position.y + this.size.height);
     ctx.closePath();
     ctx.fill();
-
     ctx.restore();
   }
 }
@@ -217,7 +206,6 @@ export class Enemy implements GameObject {
       ctx.closePath();
       ctx.fill();
 
-      // HP
       ctx.fillStyle = '#333';
       ctx.fillRect(this.position.x, this.position.y - 12, this.size.width, 6);
       ctx.fillStyle = '#00ffcc';
@@ -232,7 +220,6 @@ export class Enemy implements GameObject {
       ctx.arc(cx, cy, 8, 0, Math.PI * 2);
       ctx.fill();
     }
-
     ctx.restore();
   }
 }
@@ -246,7 +233,6 @@ export class GameEngine {
   state: 'MENU' | 'SHOP' | 'PLAYING' | 'GAMEOVER' = 'MENU';
   score = 0;
   level = 1;
-  selectedLevel = 1;
   coins = 50;
   spawnTimer = 0;
   isLoopRunning = false;
@@ -265,22 +251,24 @@ export class GameEngine {
   startLevel(lvl: number) {
     sound.init();
     this.level = lvl;
-    this.selectedLevel = lvl;
     this.score = (lvl - 1) * 100;
     this.enemies = [];
     this.bullets = [];
     this.player = new Player(this.canvas.width, this.canvas.height);
     if (this.upgrades.shieldLevel > 0) this.player.hasShield = true;
     this.state = 'PLAYING';
+    this.syncUI();
   }
 
   openShop() {
     sound.init();
     this.state = 'SHOP';
+    this.syncUI();
   }
 
   openMenu() {
     this.state = 'MENU';
+    this.syncUI();
   }
 
   startLoop() {
@@ -301,19 +289,6 @@ export class GameEngine {
 
   shoot() {
     sound.init();
-
-    if (this.state === 'MENU') {
-      this.startLevel(this.selectedLevel);
-      return;
-    }
-    if (this.state === 'SHOP') {
-      this.openMenu();
-      return;
-    }
-    if (this.state === 'GAMEOVER') {
-      this.openMenu();
-      return;
-    }
     if (this.state !== 'PLAYING') return;
 
     sound.playLaser();
@@ -341,16 +316,10 @@ export class GameEngine {
         this.player.hasShield = true;
       }
       sound.playPowerup();
+      this.syncUI();
       return true;
     }
     return false;
-  }
-
-  changeSelectedLevel(dir: number) {
-    sound.init();
-    this.selectedLevel += dir;
-    if (this.selectedLevel < 1) this.selectedLevel = 3;
-    if (this.selectedLevel > 3) this.selectedLevel = 1;
   }
 
   update(dt: number) {
@@ -401,6 +370,7 @@ export class GameEngine {
           this.upgrades.shieldLevel = 0;
         } else {
           this.state = 'GAMEOVER';
+          this.syncUI();
         }
       }
     }
@@ -420,29 +390,7 @@ export class GameEngine {
 
   render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    if (this.state === 'MENU') {
-      this.renderMenu();
-      return;
-    }
-
-    if (this.state === 'SHOP') {
-      this.renderShop();
-      return;
-    }
-
-    if (this.state === 'GAMEOVER') {
-      this.ctx.fillStyle = '#ff0055';
-      this.ctx.font = 'bold 22px sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('ИГРА ОКОНЧАНА', this.canvas.width / 2, this.canvas.height / 2 - 20);
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.font = '14px sans-serif';
-      this.ctx.fillText(`Счет: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
-      this.ctx.fillText('Нажмите АТАКА для Выхода', this.canvas.width / 2, this.canvas.height / 2 + 40);
-      this.ctx.textAlign = 'left';
-      return;
-    }
+    if (this.state !== 'PLAYING') return;
 
     this.ctx.fillStyle = '#00ffcc';
     this.ctx.font = '14px sans-serif';
@@ -456,84 +404,29 @@ export class GameEngine {
     this.enemies.forEach((e) => e.draw(this.ctx));
   }
 
-  renderMenu() {
-    this.ctx.textAlign = 'center';
-    this.ctx.fillStyle = '#00ffcc';
-    this.ctx.font = 'bold 22px sans-serif';
-    this.ctx.fillText('SPACE ARCADE', this.canvas.width / 2, 60);
+  syncUI() {
+    const menu = document.getElementById('menuScreen');
+    const shop = document.getElementById('shopScreen');
+    const gameOver = document.getElementById('gameOverScreen');
 
-    this.ctx.fillStyle = '#ffff00';
-    this.ctx.font = '14px sans-serif';
-    this.ctx.fillText(`Монеты: $${this.coins}`, this.canvas.width / 2, 90);
+    if (menu) menu.classList.toggle('hidden', this.state !== 'MENU');
+    if (shop) shop.classList.toggle('hidden', this.state !== 'SHOP');
+    if (gameOver) gameOver.classList.toggle('hidden', this.state !== 'GAMEOVER');
 
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillText('ВЫБОР УРОВНЯ:', this.canvas.width / 2, 140);
+    const menuCoins = document.getElementById('menuCoins');
+    if (menuCoins) menuCoins.textContent = `Монеты: $${this.coins}`;
 
-    for (let i = 1; i <= 3; i++) {
-      const y = 160 + (i - 1) * 45;
-      this.ctx.fillStyle = this.selectedLevel === i ? '#00ffcc' : '#1a2634';
-      this.ctx.fillRect(this.canvas.width / 2 - 80, y, 160, 35);
-      this.ctx.fillStyle = this.selectedLevel === i ? '#000' : '#fff';
-      this.ctx.fillText(`Уровень ${i}`, this.canvas.width / 2, y + 22);
-    }
+    const shopCoins = document.getElementById('shopCoins');
+    if (shopCoins) shopCoins.textContent = `Баланс: $${this.coins}`;
 
-    this.ctx.fillStyle = '#ff9900';
-    this.ctx.fillRect(this.canvas.width / 2 - 80, 310, 160, 35);
-    this.ctx.fillStyle = '#000';
-    this.ctx.fillText('МАГАЗИН', this.canvas.width / 2, 332);
+    const finalScore = document.getElementById('finalScore');
+    if (finalScore) finalScore.textContent = `Счет: ${this.score}`;
 
-    this.ctx.fillStyle = '#888';
-    this.ctx.font = '12px sans-serif';
-    this.ctx.fillText('◀ ▶ выбор уровня | АТАКА начать', this.canvas.width / 2, 380);
+    const gunCost = this.upgrades.multishotLevel * 30;
+    const shopGunBtn = document.getElementById('shopGunBtn');
+    if (shopGunBtn) shopGunBtn.textContent = `Оружие (lvl ${this.upgrades.multishotLevel}) - $${gunCost}`;
 
-    this.ctx.textAlign = 'left';
-  }
-
-  renderShop() {
-    this.ctx.textAlign = 'center';
-    this.ctx.fillStyle = '#ff9900';
-    this.ctx.font = 'bold 20px sans-serif';
-    this.ctx.fillText('МАГАЗИН', this.canvas.width / 2, 50);
-
-    this.ctx.fillStyle = '#ffff00';
-    this.ctx.font = '14px sans-serif';
-    this.ctx.fillText(`Баланс: $${this.coins}`, this.canvas.width / 2, 80);
-
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillText(`Оружие Lvl: ${this.upgrades.multishotLevel}`, this.canvas.width / 2, 130);
-    this.ctx.fillText(`Щит: ${this.player.hasShield ? 'АКТИВЕН' : 'НЕТ'}`, this.canvas.width / 2, 170);
-
-    this.ctx.fillStyle = '#00ffcc';
-    this.ctx.fillRect(this.canvas.width / 2 - 80, 240, 160, 35);
-    this.ctx.fillStyle = '#000';
-    this.ctx.fillText('В МЕНЮ (АТАКА)', this.canvas.width / 2, 262);
-
-    this.ctx.textAlign = 'left';
-  }
-
-  handleCanvasClick(x: number, y: number) {
-    sound.init();
-
-    if (this.state === 'MENU') {
-      for (let i = 1; i <= 3; i++) {
-        const btnY = 160 + (i - 1) * 45;
-        if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= btnY && y <= btnY + 35) {
-          this.selectedLevel = i;
-          this.startLevel(i);
-          return;
-        }
-      }
-      if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= 310 && y <= 310 + 35) {
-        this.openShop();
-        return;
-      }
-    }
-
-    if (this.state === 'SHOP') {
-      if (x >= this.canvas.width / 2 - 80 && x <= this.canvas.width / 2 + 80 && y >= 240 && y <= 240 + 35) {
-        this.openMenu();
-        return;
-      }
-    }
+    const btnUpgradeGun = document.getElementById('btnUpgradeGun');
+    if (btnUpgradeGun) btnUpgradeGun.textContent = `🔫 Оружие (lvl ${this.upgrades.multishotLevel}) - $${gunCost}`;
   }
 }

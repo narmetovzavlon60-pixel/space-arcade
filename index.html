@@ -1,28 +1,176 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Space Arcade TMA</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  </head>
-  <body>
-    <div id="app">
-      <div class="game-container">
-        <canvas id="gameCanvas" width="360" height="480"></canvas>
-      </div>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Spaceship Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      background: #080b10;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .game-container {
+      position: relative;
+      width: 320px;
+      height: 480px;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      background: #020408;
+      border: 2px solid #00ffcc;
+      border-radius: 12px;
+      display: block;
+    }
+    /* Стили экранов UI */
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(8, 11, 16, 0.92);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+    }
+    .hidden {
+      display: none !important;
+    }
+    h2 {
+      color: #00ffcc;
+      font-size: 22px;
+      margin-bottom: 5px;
+    }
+    .coins-text {
+      color: #ffff00;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .btn {
+      width: 180px;
+      padding: 12px;
+      background: #1a2634;
+      color: #fff;
+      border: 1px solid #00ffcc;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn:active {
+      background: #00ffcc;
+      color: #000;
+    }
+    .btn-orange {
+      border-color: #ff9900;
+    }
+    .btn-orange:active {
+      background: #ff9900;
+      color: #000;
+    }
 
-      <div class="shop-panel">
-        <button id="buy-multi" class="shop-btn">🔫 Оружие (lvl <span id="lvl-multi">1</span>) - $30</button>
-        <button id="buy-shield" class="shop-btn">🛡️ Щит - $20</button>
-      </div>
+    /* Нижняя панель управления игрой */
+    .controls {
+      width: 320px;
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+    .ctrl-btn {
+      flex: 1;
+      padding: 14px;
+      background: #121924;
+      border: 1px solid #00ffcc;
+      color: #00ffcc;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      touch-action: manipulation;
+    }
+    .ctrl-btn:active {
+      background: #00ffcc;
+      color: #000;
+    }
+    .btn-fire {
+      border-color: #ff0055;
+      color: #ff0055;
+    }
+    .btn-fire:active {
+      background: #ff0055;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
 
-      <div class="controls">
-        <button id="btn-left" class="ctrl-btn">◀</button>
-        <button id="btn-right" class="ctrl-btn">▶</button>
-        <button id="btn-fire" class="ctrl-btn fire-btn">🔥 АТАКА</button>
-      </div>
+  <div class="game-container">
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
+
+    <!-- Главное меню -->
+    <div id="menuScreen" class="screen">
+      <h2>SPACE ARCADE</h2>
+      <div id="menuCoins" class="coins-text">Монеты: $0</div>
+      <p style="font-size: 12px; color: #aaa;">Выберите уровень:</p>
+      <button class="btn" onclick="window.gameEngine.startLevel(1)">Уровень 1</button>
+      <button class="btn" onclick="window.gameEngine.startLevel(2)">Уровень 2</button>
+      <button class="btn" onclick="window.gameEngine.startLevel(3)">Уровень 3</button>
+      <button class="btn btn-orange" onclick="window.gameEngine.openShop()">МАГАЗИН</button>
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+    <!-- Экран магазина -->
+    <div id="shopScreen" class="screen hidden">
+      <h2 style="color: #ff9900;">МАГАЗИН</h2>
+      <div id="shopCoins" class="coins-text">Баланс: $0</div>
+      <button id="shopGunBtn" class="btn">Оружие (lvl 1) - $30</button>
+      <button id="shopShieldBtn" class="btn">Щит - $20</button>
+      <button class="btn" style="margin-top: 15px;" onclick="window.gameEngine.openMenu()">В МЕНЮ</button>
+    </div>
+
+    <!-- Экран Game Over -->
+    <div id="gameOverScreen" class="screen hidden">
+      <h2 style="color: #ff0055;">ИГРА ОКОНЧАНА</h2>
+      <div id="finalScore" style="font-size: 18px;">Счет: 0</div>
+      <button class="btn" style="margin-top: 15px;" onclick="window.gameEngine.openMenu()">В МЕНЮ</button>
+    </div>
+  </div>
+
+  <!-- Панель игрового управления -->
+  <div class="controls">
+    <div class="row">
+      <button id="btnUpgradeGun" class="ctrl-btn">🔫 Оружие - $30</button>
+      <button id="btnUpgradeShield" class="ctrl-btn">🛡️ Щит - $20</button>
+    </div>
+    <div class="row">
+      <button id="btnLeft" class="ctrl-btn">◀</button>
+      <button id="btnRight" class="ctrl-btn">▶</button>
+      <button id="btnFire" class="ctrl-btn btn-fire">🔥 АТАКА</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
 </html>
