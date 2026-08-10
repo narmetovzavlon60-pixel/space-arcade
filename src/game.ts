@@ -14,7 +14,15 @@ export interface GameObject {
 }
 
 export interface Upgrades {
-  multiShot: boolean;
+  multishotLevel: number;
+  shieldLevel: number;
+}
+
+export interface GameState {
+  score: number;
+  level: number;
+  coins: number;
+  multiShotLvl: number;
   hasShield: boolean;
 }
 
@@ -97,5 +105,98 @@ export class Bullet implements GameObject {
   draw(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = this.isEnemy ? '#ff0055' : '#ffff00';
     ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+  }
+}
+
+export class Enemy implements GameObject {
+  position: Vector2D;
+  size: Size = { width: 32, height: 32 };
+  hp: number;
+  maxHp: number;
+  type: string;
+  isBoss: boolean;
+
+  constructor(x: number, y: number, type = 'normal', isBoss = false, hp = 1) {
+    this.position = { x, y };
+    this.type = type;
+    this.isBoss = isBoss;
+    this.hp = hp;
+    this.maxHp = hp;
+    if (isBoss) {
+      this.size = { width: 64, height: 64 };
+    }
+  }
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.fillStyle = this.isBoss ? '#ff0000' : '#ff5500';
+    ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+    ctx.restore();
+  }
+}
+
+export class GameEngine {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  player: Player;
+  bullets: Bullet[] = [];
+  enemies: Enemy[] = [];
+  state: 'MENU' | 'PLAYING' | 'GAMEOVER' = 'MENU';
+  coins = 100;
+  upgrades: Upgrades = {
+    multishotLevel: 1,
+    shieldLevel: 0
+  };
+
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d')!;
+    this.player = new Player(canvas.width, canvas.height);
+  }
+
+  init() {
+    this.state = 'PLAYING';
+    this.start();
+  }
+
+  start() {
+    const loop = () => {
+      this.update();
+      this.render();
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+
+  shoot() {
+    if (this.state !== 'PLAYING') return;
+    const bullet = new Bullet(
+      this.player.position.x + this.player.size.width / 2 - 2,
+      this.player.position.y
+    );
+    this.bullets.push(bullet);
+  }
+
+  buyUpgrade(type: keyof Upgrades, cost: number): boolean {
+    if (this.coins >= cost) {
+      this.coins -= cost;
+      this.upgrades[type]++;
+      if (type === 'shieldLevel') {
+        this.player.hasShield = true;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  update() {
+    if (this.state !== 'PLAYING') return;
+    this.bullets.forEach((b) => b.update(1 / 60));
+  }
+
+  render() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.player.draw(this.ctx);
+    this.bullets.forEach((b) => b.draw(this.ctx));
   }
 }
