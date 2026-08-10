@@ -11,9 +11,14 @@ export interface Size {
 export interface GameObject {
   position: Vector2D;
   size: Size;
-  velocity: Vector2D;
   draw(ctx: CanvasRenderingContext2D): void;
   update(deltaTime: number): void;
 }
 
-export type GameState = 'START' | 'PLAYING' | 'GAMEOVER';
+export type GameState = 'START' | 'PLAYING' | 'SHOP' | 'GAMEOVER';
+
+export interface Upgrades {
+  fireRateLevel: number;
+  multishotLevel: number;
+  shieldLevel: number;
+}

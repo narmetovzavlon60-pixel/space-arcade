@@ -20,10 +20,8 @@ if (window.Telegram?.WebApp) {
 const canvas = document.querySelector<HTMLCanvasElement>('#gameCanvas')!;
 const engine = new GameEngine(canvas);
 
-// Автоматический запуск при старте приложения
 engine.init();
 
-// Запуск/перезапуск по тапу на холст (работает и на десктопе, и на мобильных)
 const handleStart = (e: Event) => {
   e.preventDefault();
   if (engine.state !== 'PLAYING') {
@@ -34,7 +32,6 @@ const handleStart = (e: Event) => {
 canvas.addEventListener('click', handleStart);
 canvas.addEventListener('touchstart', handleStart, { passive: false });
 
-// Управление с клавиатуры
 window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') engine.player.velocity.x = -1;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') engine.player.velocity.x = 1;
@@ -47,7 +44,6 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-// Сенсорные кнопки управления
 const btnLeft = document.querySelector('#btn-left')!;
 const btnRight = document.querySelector('#btn-right')!;
 const btnFire = document.querySelector('#btn-fire')!;
@@ -62,3 +58,20 @@ const bindTouch = (elem: Element, onStart: () => void, onEnd: () => void) => {
 bindTouch(btnLeft, () => engine.player.velocity.x = -1, () => engine.player.velocity.x = 0);
 bindTouch(btnRight, () => engine.player.velocity.x = 1, () => engine.player.velocity.x = 0);
 bindTouch(btnFire, () => engine.shoot(), () => {});
+
+// Магазин
+const buyMulti = document.querySelector('#buy-multi')!;
+const buyShield = document.querySelector('#buy-shield')!;
+const lvlMulti = document.querySelector('#lvl-multi')!;
+
+buyMulti.addEventListener('click', () => {
+  if (engine.upgrades.multishotLevel < 3 && engine.buyUpgrade('multishotLevel', 30)) {
+    lvlMulti.textContent = engine.upgrades.multishotLevel.toString();
+  }
+});
+
+buyShield.addEventListener('click', () => {
+  if (engine.upgrades.shieldLevel === 0 && engine.buyUpgrade('shieldLevel', 20)) {
+    buyShield.classList.add('active');
+  }
+});

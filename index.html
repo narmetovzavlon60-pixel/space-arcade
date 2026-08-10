@@ -5,17 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Space Arcade TMA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div id="app">
-      <canvas id="gameCanvas" width="360" height="500"></canvas>
+      <div class="game-container">
+        <canvas id="gameCanvas" width="360" height="480"></canvas>
+      </div>
+
+      <div class="shop-panel">
+        <button id="buy-multi" class="shop-btn">🔫 Оружие (lvl <span id="lvl-multi">1</span>) - $30</button>
+        <button id="buy-shield" class="shop-btn">🛡️ Щит - $20</button>
+      </div>
+
       <div class="controls">
-        <div class="dpad">
-          <button id="btn-left">◀</button>
-          <button id="btn-right">▶</button>
-        </div>
-        <button id="btn-fire">🔥 АТАКА</button>
+        <button id="btn-left" class="ctrl-btn">◀</button>
+        <button id="btn-right" class="ctrl-btn">▶</button>
+        <button id="btn-fire" class="ctrl-btn fire-btn">🔥 АТАКА</button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
