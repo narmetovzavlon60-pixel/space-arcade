@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Space Arcade TMA</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="gameCanvas" width="360" height="500"></canvas>
+      <div class="controls">
+        <div class="dpad">
+          <button id="btn-left">◀</button>
+          <button id="btn-right">▶</button>
+        </div>
+        <button id="btn-fire">🔥 АТАКА</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
