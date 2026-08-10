@@ -34,11 +34,7 @@ export class Player implements GameObject {
 
   update(dt: number, canvasWidth: number) {
     this.position.x += this.velocity.x * this.speed * dt;
-    
-    // Ограничение движения в границах экрана
-    if (this.position.x < 0) {
-      this.position.x = 0;
-    }
+    if (this.position.x < 0) this.position.x = 0;
     if (this.position.x + this.size.width > canvasWidth) {
       this.position.x = canvasWidth - this.size.width;
     }
@@ -47,7 +43,7 @@ export class Player implements GameObject {
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
 
-    // Огонь двигателя
+    // Пламя двигателя
     ctx.fillStyle = '#ff9900';
     ctx.beginPath();
     ctx.moveTo(this.position.x + 12, this.position.y + this.size.height);
@@ -56,7 +52,7 @@ export class Player implements GameObject {
     ctx.closePath();
     ctx.fill();
 
-    // Защитное поле
+    // Щит
     if (this.hasShield) {
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 3;
@@ -73,7 +69,7 @@ export class Player implements GameObject {
       ctx.stroke();
     }
 
-    // Корабль
+    // Корпус корабля
     ctx.fillStyle = '#00ffcc';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#00ffcc';
@@ -122,53 +118,66 @@ export class Bullet implements GameObject {
 export class Enemy implements GameObject {
   position: Vector2D;
   size: Size = { width: 32, height: 32 };
-  speed = 120;
+  speed: number;
   hp: number;
   maxHp: number;
-  type: string;
   isBoss: boolean;
   active = true;
 
-  constructor(x: number, y: number, type = 'normal', isBoss = false, hp = 1) {
+  constructor(x: number, y: number, speed = 120, isBoss = false, hp = 1) {
     this.position = { x, y };
-    this.type = type;
+    this.speed = speed;
     this.isBoss = isBoss;
     this.hp = hp;
     this.maxHp = hp;
     if (isBoss) {
-      this.size = { width: 56, height: 56 };
-      this.speed = 60;
+      this.size = { width: 64, height: 64 };
+      this.speed = 50;
     }
   }
 
   update(dt: number) {
     this.position.y += this.speed * dt;
-    if (this.position.y > 500) {
+    if (this.position.y > 520) {
       this.active = false;
     }
   }
 
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
-    ctx.fillStyle = this.isBoss ? '#ff0055' : '#ff9900';
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = ctx.fillStyle;
-    
-    ctx.beginPath();
-    ctx.arc(
-      this.position.x + this.size.width / 2,
-      this.position.y + this.size.height / 2,
-      this.size.width / 2,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
+    const cx = this.position.x + this.size.width / 2;
+    const cy = this.position.y + this.size.height / 2;
 
     if (this.isBoss) {
-      ctx.fillStyle = '#ff0000';
-      ctx.fillRect(this.position.x, this.position.y - 10, this.size.width, 5);
-      ctx.fillStyle = '#00ff00';
-      ctx.fillRect(this.position.x, this.position.y - 10, this.size.width * (this.hp / this.maxHp), 5);
+      // Отрисовка Босса
+      ctx.fillStyle = '#ff0055';
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#ff0055';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + 30);
+      ctx.lineTo(cx - 30, cy - 30);
+      ctx.lineTo(cx + 30, cy - 30);
+      ctx.closePath();
+      ctx.fill();
+
+      // Шкала здоровья
+      ctx.fillStyle = '#333';
+      ctx.fillRect(this.position.x, this.position.y - 12, this.size.width, 6);
+      ctx.fillStyle = '#00ffcc';
+      ctx.fillRect(this.position.x, this.position.y - 12, this.size.width * (this.hp / this.maxHp), 6);
+    } else {
+      // Инопланетный дрон
+      ctx.fillStyle = '#ff5500';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = '#ff5500';
+      
+      // Крылья
+      ctx.fillRect(this.position.x, cy - 4, this.size.width, 8);
+      // Ядро
+      ctx.fillStyle = '#ffff00';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();
@@ -183,6 +192,7 @@ export class GameEngine {
   enemies: Enemy[] = [];
   state: 'MENU' | 'PLAYING' | 'GAMEOVER' = 'MENU';
   score = 0;
+  level = 1;
   coins = 0;
   spawnTimer = 0;
   upgrades: Upgrades = {
@@ -199,9 +209,12 @@ export class GameEngine {
   init() {
     this.state = 'PLAYING';
     this.score = 0;
+    this.level = 1;
     this.coins = 50;
     this.enemies = [];
     this.bullets = [];
+    this.player = new Player(this.canvas.width, this.canvas.height);
+    this.upgrades = { multishotLevel: 1, shieldLevel: 0 };
     this.start();
   }
 
@@ -219,7 +232,10 @@ export class GameEngine {
   }
 
   shoot() {
-    if (this.state !== 'PLAYING') return;
+    if (this.state !== 'PLAYING') {
+      if (this.state === 'GAMEOVER') this.init();
+      return;
+    }
 
     const centerX = this.player.position.x + this.player.size.width / 2 - 2;
     const topY = this.player.position.y;
@@ -251,24 +267,28 @@ export class GameEngine {
   update(dt: number) {
     if (this.state !== 'PLAYING') return;
 
-    // Обновляем позицию игрока
     this.player.update(dt, this.canvas.width);
 
-    // Спавн врагов
-    this.spawnTimer += dt;
-    if (this.spawnTimer > 1.2) {
-      this.spawnTimer = 0;
-      const x = Math.random() * (this.canvas.width - 40);
-      this.enemies.push(new Enemy(x, -40, 'normal', false, 1));
+    // Расчет текущего уровня по очкам
+    const newLevel = Math.floor(this.score / 100) + 1;
+    if (newLevel > this.level) {
+      this.level = newLevel;
+      // Появление босса с каждым новым уровнем
+      this.enemies.push(new Enemy(this.canvas.width / 2 - 32, -70, 40, true, 10 * this.level));
     }
 
-    // Движение пуль и врагов
+    // Спавн обычных врагов
+    this.spawnTimer += dt;
+    const spawnRate = Math.max(0.5, 1.3 - this.level * 0.1);
+    if (this.spawnTimer > spawnRate) {
+      this.spawnTimer = 0;
+      const x = Math.random() * (this.canvas.width - 40);
+      const enemySpeed = 110 + this.level * 20;
+      this.enemies.push(new Enemy(x, -40, enemySpeed, false, 1));
+    }
+
     this.bullets.forEach((b) => b.update(dt));
     this.enemies.forEach((e) => e.update(dt));
-
-    // Фильтрация неактивных
-    this.bullets = this.bullets.filter((b) => b.active);
-    this.enemies = this.enemies.filter((e) => e.active);
 
     // Коллизии: Пули -> Враги
     for (const b of this.bullets) {
@@ -278,12 +298,28 @@ export class GameEngine {
           e.hp--;
           if (e.hp <= 0) {
             e.active = false;
-            this.score += 10;
-            this.coins += 5;
+            this.score += e.isBoss ? 50 : 10;
+            this.coins += e.isBoss ? 25 : 5;
           }
         }
       }
     }
+
+    // Коллизии: Враги -> Игрок
+    for (const e of this.enemies) {
+      if (e.active && this.checkCollision(e, this.player)) {
+        e.active = false;
+        if (this.player.hasShield) {
+          this.player.hasShield = false;
+          this.upgrades.shieldLevel = 0;
+        } else {
+          this.state = 'GAMEOVER';
+        }
+      }
+    }
+
+    this.bullets = this.bullets.filter((b) => b.active);
+    this.enemies = this.enemies.filter((e) => e.active);
   }
 
   checkCollision(a: GameObject, b: GameObject): boolean {
@@ -298,12 +334,25 @@ export class GameEngine {
   render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Рисуем интерфейс
+    if (this.state === 'GAMEOVER') {
+      this.ctx.fillStyle = '#ff0055';
+      this.ctx.font = 'bold 22px sans-serif';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('ИГРА ОКОНЧАНА', this.canvas.width / 2, this.canvas.height / 2 - 10);
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.font = '14px sans-serif';
+      this.ctx.fillText('Нажмите АТАКА для перезапуска', this.canvas.width / 2, this.canvas.height / 2 + 20);
+      this.ctx.textAlign = 'left';
+      return;
+    }
+
+    // Верхний HUD
     this.ctx.fillStyle = '#00ffcc';
     this.ctx.font = '14px sans-serif';
     this.ctx.fillText(`Счет: ${this.score}`, 10, 25);
+    this.ctx.fillText(`Уровень: ${this.level}`, 10, 45);
     this.ctx.fillStyle = '#ffff00';
-    this.ctx.fillText(`Монеты: $${this.coins}`, 10, 45);
+    this.ctx.fillText(`Монеты: $${this.coins}`, 10, 65);
 
     this.player.draw(this.ctx);
     this.bullets.forEach((b) => b.draw(this.ctx));
